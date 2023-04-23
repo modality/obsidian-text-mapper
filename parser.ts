@@ -14,138 +14,11 @@ import {
     DY,
     HEX_CORNERS,
     ATTRIBUTE_MAP_REGEX,
+    SVGElement,
 } from "./constants";
 
-interface SVGElement {
-    createSvg(tag: string, options?: any): SVGElement;
-}
-
-export class Region {
-    x: number;
-    y: number;
-    types: string[];
-    label: string;
-    size: string;
-
-    constructor() {
-        this.types = [];
-    }
-
-    pixels(addX: number, addY: number) {
-        return [
-            (this.x * DX * 3) / 2 + addX,
-            this.y * DY - ((this.x % 2) * DY) / 2 + addY,
-        ];
-    }
-
-    svg(svgEl: SVGElement): void {
-        let data = "";
-        const pixels = this.pixels(0, 0);
-        for (const type of this.types) {
-            svgEl.createSvg("use", {
-                attr: {
-                    x: pixels[0].toFixed(1),
-                    y: pixels[1].toFixed(1),
-                    href: `#${type}`,
-                },
-            });
-        }
-    }
-
-    svgCoordinates(svgEl: SVGElement, textAttributes: string): void {
-        const pixels = this.pixels(0, -DY * 0.4);
-        const coordEl = svgEl.createSvg("text", {
-            attr: {
-                "text-anchor": "middle",
-                x: pixels[0].toFixed(1),
-                y: pixels[1].toFixed(1),
-            },
-        });
-        coordEl.textContent = `${this.x}.${this.y}`;
-    }
-
-    svgRegion(svgEl: SVGElement, attributes: any): void {
-        let id = "hex";
-        if (this.x < 100 && this.y < 100) {
-            id += `${this.x}${this.y}`;
-        } else {
-            id += `${this.x}.${this.y}`;
-        }
-        const points = HEX_CORNERS.map((corner) => {
-            const pixels = this.pixels(corner[0], corner[1]);
-            return `${pixels[0].toFixed(1)},${pixels[1].toFixed(1)}`;
-        }).join(" ");
-
-        svgEl.createSvg("polygon", {
-            attr: {
-                ...attributes,
-                id,
-                points,
-            },
-        });
-    }
-
-    svgLabel(
-        svgEl: SVGElement,
-        labelAttributes: any,
-        glowAttributes: any
-    ): void {
-        if (this.label === undefined) {
-            return;
-        }
-        const attributes = {
-            ...labelAttributes,
-        };
-        if (this.size !== undefined) {
-            attributes["font-size"] = this.size;
-        }
-        const pixels = this.pixels(0, DY * 0.4);
-        const gEl = svgEl.createSvg("g");
-
-        const glowEl = gEl.createSvg("text", {
-            attr: {
-                "text-anchor": "middle",
-                x: pixels[0].toFixed(1),
-                y: pixels[1].toFixed(1),
-                ...attributes,
-                ...glowAttributes,
-            },
-        });
-        glowEl.textContent = this.label;
-
-        const labelEl = gEl.createSvg("text", {
-            attr: {
-                "text-anchor": "middle",
-                x: pixels[0].toFixed(1),
-                y: pixels[1].toFixed(1),
-                ...attributes,
-            },
-        });
-        labelEl.textContent = this.label;
-    }
-}
-
-export class Spline {
-    types: string;
-    label: string;
-    side: string;
-    start: string;
-    id: string;
-    points: number[][];
-
-    constructor() {
-        this.points = [];
-    }
-
-    addPoint(x: string, y: string) {
-        const nX = parseInt(x);
-        const nY = parseInt(y);
-        this.points.push([nX, nY]);
-    }
-
-    svg(svgEl: SVGElement): void {}
-    svgLabel(svgEl: SVGElement): void {}
-}
+import { Region } from "region";
+import { Spline } from "spline";
 
 // https://alexschroeder.ch/cgit/text-mapper/tree/lib/Game/TextMapper/Mapper.pm
 export class TextMapperParser {
@@ -288,6 +161,7 @@ export class TextMapperParser {
 
     svgHeader(el: HTMLElement): SVGElement {
         if (this.regions.length == 0) {
+            // @ts-ignore
             return el.createSvg("svg");
         }
         // These are required to calculate the viewBox for the SVG. Min and max X are
@@ -325,6 +199,7 @@ export class TextMapperParser {
         const width = (vx2 - vx1).toFixed(0);
         const height = (vy2 - vy1).toFixed(0);
 
+        // @ts-ignore
         const svgEl: SVGElement = el.createSvg("svg", {
             attr: {
                 viewBox: `${vx1} ${vy1} ${width} ${height}`,
@@ -436,7 +311,11 @@ export class TextMapperParser {
     svgLineLabels(svgEl: SVGElement): void {
         const labelsEl = svgEl.createSvg("g", { attr: { id: "line_labels" } });
         for (const spline of this.splines) {
-            spline.svgLabel(labelsEl);
+            spline.svgLabel(
+                labelsEl,
+                this.labelAttributes,
+                this.glowAttributes
+            );
         }
     }
 

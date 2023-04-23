@@ -22,3 +22,9 @@ export const HEX_CORNERS = [
     [DX / 2, -DY / 2],
     [-DX / 2, -DY / 2],
 ];
+
+export interface SVGElement {
+    createSvg(tag: string, options?: any): SVGElement;
+    innerHTML: string;
+    textContent: string;
+}
