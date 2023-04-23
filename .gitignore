@@ -1,0 +1,15 @@
+.DS_Store
+
+# vscode
+.vscode
+
+# npm
+node_modules
+package-lock.json
+yarn.lock
+
+# Exclude sourcemaps
+*.map
+
+# obsidian
+data.json

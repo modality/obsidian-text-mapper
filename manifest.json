@@ -1,0 +1,10 @@
+{
+    "id": "text-mapper",
+    "name": "Text Mapper",
+    "version": "1.0.0",
+    "minAppVersion": "0.12.0",
+    "description": "Render hex maps in Obsidian",
+    "author": "Michael Hansen",
+    "authorUrl": "https://github.com/modality",
+    "isDesktopOnly": false
+}
