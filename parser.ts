@@ -13,7 +13,12 @@ import {
     DX,
     DY,
     HEX_CORNERS,
+    ATTRIBUTE_MAP_REGEX,
 } from "./constants";
+
+interface SVGElement {
+    createSvg(tag: string, options?: any): SVGElement;
+}
 
 export class Region {
     x: number;
@@ -33,30 +38,33 @@ export class Region {
         ];
     }
 
-    svg(): string {
+    svg(svgEl: SVGElement): void {
         let data = "";
         const pixels = this.pixels(0, 0);
         for (const type of this.types) {
-            data += `<use x="${pixels[0].toFixed(1)}" y="${pixels[1].toFixed(
-                1
-            )}" xlink:href="#${type}" />\n`;
+            svgEl.createSvg("use", {
+                attr: {
+                    x: pixels[0].toFixed(1),
+                    y: pixels[1].toFixed(1),
+                    href: `#${type}`,
+                },
+            });
         }
-        return data;
     }
 
-    svgCoordinates(textAttributes: string): string {
-        let data = `<text text-anchor="middle"`;
+    svgCoordinates(svgEl: SVGElement, textAttributes: string): void {
         const pixels = this.pixels(0, -DY * 0.4);
-        data += ` x="${pixels[0].toFixed(1)}" y="${pixels[1].toFixed(1)}" `;
-        data += textAttributes;
-        data += ">";
-        // TODO
-        data += `${this.x}.${this.y}`;
-        data += `</text>`;
-        return data;
+        const coordEl = svgEl.createSvg("text", {
+            attr: {
+                "text-anchor": "middle",
+                x: pixels[0].toFixed(1),
+                y: pixels[1].toFixed(1),
+            },
+        });
+        coordEl.textContent = `${this.x}.${this.y}`;
     }
 
-    svgRegion(attributes: string): string {
+    svgRegion(svgEl: SVGElement, attributes: any): void {
         let id = "hex";
         if (this.x < 100 && this.y < 100) {
             id += `${this.x}${this.y}`;
@@ -67,26 +75,53 @@ export class Region {
             const pixels = this.pixels(corner[0], corner[1]);
             return `${pixels[0].toFixed(1)},${pixels[1].toFixed(1)}`;
         }).join(" ");
-        return `<polygon id="${id}" ${attributes} points="${points}" />`;
+
+        svgEl.createSvg("polygon", {
+            attr: {
+                ...attributes,
+                id,
+                points,
+            },
+        });
     }
 
-    svgLabel(labelAttributes: string, glowAttributes: string): string {
-        let attributes = labelAttributes;
+    svgLabel(
+        svgEl: SVGElement,
+        labelAttributes: any,
+        glowAttributes: any
+    ): void {
         if (this.label === undefined) {
-            return "";
+            return;
         }
+        const attributes = {
+            ...labelAttributes,
+        };
         if (this.size !== undefined) {
-            attributes += ` font-size="${this.size}"`;
+            attributes["font-size"] = this.size;
         }
         const pixels = this.pixels(0, DY * 0.4);
-        const pixelAttrs = `x="${pixels[0].toFixed(1)}" y="${pixels[1].toFixed(
-            1
-        )}"`;
-        let data = "<g>";
-        data += `<text text-anchor="middle" ${pixelAttrs} ${attributes} ${glowAttributes}>${this.label}</text>`;
-        data += `<text text-anchor="middle" ${pixelAttrs} ${attributes}>${this.label}</text>`;
-        data += "</g>\n";
-        return data;
+        const gEl = svgEl.createSvg("g");
+
+        const glowEl = gEl.createSvg("text", {
+            attr: {
+                "text-anchor": "middle",
+                x: pixels[0].toFixed(1),
+                y: pixels[1].toFixed(1),
+                ...attributes,
+                ...glowAttributes,
+            },
+        });
+        glowEl.textContent = this.label;
+
+        const labelEl = gEl.createSvg("text", {
+            attr: {
+                "text-anchor": "middle",
+                x: pixels[0].toFixed(1),
+                y: pixels[1].toFixed(1),
+                ...attributes,
+            },
+        });
+        labelEl.textContent = this.label;
     }
 }
 
@@ -108,12 +143,8 @@ export class Spline {
         this.points.push([nX, nY]);
     }
 
-    svg(): string {
-        return "";
-    }
-    svgLabel(): string {
-        return "";
-    }
+    svg(svgEl: SVGElement): void {}
+    svgLabel(svgEl: SVGElement): void {}
 }
 
 // https://alexschroeder.ch/cgit/text-mapper/tree/lib/Game/TextMapper/Mapper.pm
@@ -125,9 +156,9 @@ export class TextMapperParser {
     splines: Spline[]; // ' => sub { [] };
     things: Region[]; // ' => sub { [] };
     pathAttributes: any; // ' => sub { {} };
-    textAttributes: string;
-    glowAttributes: string;
-    labelAttributes: string;
+    textAttributes: any;
+    glowAttributes: any;
+    labelAttributes: any;
     // messages: string[]; // ' => sub { [] };
 
     constructor() {
@@ -164,7 +195,7 @@ export class TextMapperParser {
                     region.size = labelMatch[2];
                     rest = rest.replace(HEX_LABEL_REGEX, "");
                 }
-                const types = rest.split(/\s+/);
+                const types = rest.split(/\s+/).filter((t) => t.length > 0);
                 region.types = types;
                 this.regions.push(region);
                 this.things.push(region);
@@ -185,25 +216,25 @@ export class TextMapperParser {
                 this.splines.push(spline);
             } else if (ATTRIBUTES_REGEX.test(line)) {
                 const match = line.match(ATTRIBUTES_REGEX);
-                this.attributes[match[1]] = match[2];
+                this.attributes[match[1]] = this.parseAttributes(match[2]);
             } else if (XML_REGEX.test(line)) {
                 const match = line.match(XML_REGEX);
                 this.def(match[1]);
             } else if (PATH_ATTRIBUTES_REGEX.test(line)) {
                 const match = line.match(PATH_ATTRIBUTES_REGEX);
-                this.pathAttributes[match[1]] = match[2];
+                this.pathAttributes[match[1]] = this.parseAttributes(match[2]);
             } else if (PATH_REGEX.test(line)) {
                 const match = line.match(PATH_REGEX);
                 this.path[match[1]] = match[2];
             } else if (TEXT_REGEX.test(line)) {
                 const match = line.match(TEXT_REGEX);
-                this.textAttributes = match[1];
+                this.textAttributes = this.parseAttributes(match[1]);
             } else if (GLOW_REGEX.test(line)) {
                 const match = line.match(GLOW_REGEX);
-                this.glowAttributes = match[1];
+                this.glowAttributes = this.parseAttributes(match[1]);
             } else if (LABEL_REGEX.test(line)) {
                 const match = line.match(LABEL_REGEX);
-                this.labelAttributes = match[1];
+                this.labelAttributes = this.parseAttributes(match[1]);
             }
         }
     }
@@ -224,6 +255,15 @@ export class TextMapperParser {
         return new Spline();
     }
 
+    parseAttributes(attrs: string): any {
+        const output: any = {};
+        let matches;
+        while ((matches = ATTRIBUTE_MAP_REGEX.exec(attrs))) {
+            output[matches[1]] = matches[2];
+        }
+        return output;
+    }
+
     viewbox(minx: number, miny: number, maxx: number, maxy: number): number[] {
         return [
             Math.floor((minx * DX * 3) / 2 - DX - 60),
@@ -233,20 +273,22 @@ export class TextMapperParser {
         ];
     }
 
-    shape(svgEl: SVGElement, attributes: string) {
+    shape(svgEl: SVGElement, attributes: any) {
         const points = HEX_CORNERS.map((corner) => {
             return `${corner[0].toFixed(1)},${corner[1].toFixed(1)}`;
         }).join(" ");
-        const pointsAttr = ` points="${points}"`
-
-        svgEl.createSvg('polygon', { attr: attributes + pointsAttr });
+        svgEl.createSvg("polygon", {
+            attr: {
+                ...attributes,
+                points,
+            },
+        });
         // return `<polygon ${attributes} points="${points}" />`;
     }
 
-    svgHeader(el: HTMLElement): HTMLElement {
+    svgHeader(el: HTMLElement): SVGElement {
         if (this.regions.length == 0) {
-            console.log("log F");
-            return el;
+            return el.createSvg("svg");
         }
         // These are required to calculate the viewBox for the SVG. Min and max X are
         // what you would expect. Min and max Y are different, however, since we want
@@ -283,8 +325,7 @@ export class TextMapperParser {
         const width = (vx2 - vx1).toFixed(0);
         const height = (vy2 - vy1).toFixed(0);
 
-        console.log("log D");
-        const svgEl: HTMLElement = el.createSvg("svg", {
+        const svgEl: SVGElement = el.createSvg("svg", {
             attr: {
                 viewBox: `${vx1} ${vy1} ${width} ${height}`,
             },
@@ -306,8 +347,7 @@ export class TextMapperParser {
 
     svgDefs(svgEl: SVGElement): void {
         // All the definitions are included by default.
-
-        const defsEl = svgEl.createSvg("defs", {});
+        const defsEl = svgEl.createSvg("defs");
         defsEl.innerHTML = this.defs.join("\n");
 
         // collect region types from attributes and paths in case the sets don't overlap
@@ -330,8 +370,12 @@ export class TextMapperParser {
 
                 // just shapes get a glow such, eg. a house (must come first)
                 if (path && !attributes) {
-                    gEl.createSvg('path', { attr: this.glowAttributes+` d="${path}"` }
-
+                    gEl.createSvg("path", {
+                        attr: {
+                            ...this.glowAttributes,
+                            d: path,
+                        },
+                    });
                 }
                 // region with attributes get a shape (square or hex), eg. plains and grass
                 if (attributes) {
@@ -339,80 +383,72 @@ export class TextMapperParser {
                 }
                 // and now the attributes themselves the shape itself
                 if (path) {
-                    gEl.createSvg('path', { attr: this.pathAttributes+` d="${path}"` }
+                    gEl.createSvg("path", {
+                        attr: {
+                            ...this.pathAttributes,
+                            d: path,
+                        },
+                    });
                 }
-                // close
-
             }
         }
         // doc += `</defs>\n`;
         // return doc;
     }
 
-    svgBackgrounds(): string {
-        let doc = `<g id="backgrounds">\n`;
+    svgBackgrounds(svgEl: SVGElement): void {
+        const bgEl = svgEl.createSvg("g", { attr: { id: "backgrounds" } });
         for (const thing of this.things) {
-            doc += thing.svg();
-            // should KEEP this mapper's attributes
+            thing.svg(bgEl);
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
-    svgLines(): string {
-        let doc = `<g id="lines">\n`;
+    svgLines(svgEl: SVGElement): void {
+        const splinesEl = svgEl.createSvg("g", { attr: { id: "lines" } });
         for (const spline of this.splines) {
-            doc += spline.svg();
+            spline.svg(splinesEl);
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
-    svgThings(): string {
-        let doc = `<g id="things">\n`;
+    svgThings(svgEl: SVGElement): void {
+        const thingsEl = svgEl.createSvg("g", { attr: { id: "things" } });
         for (const thing of this.things) {
-            doc += thing.svg();
+            thing.svg(thingsEl);
             // should DROP this mapper's attributes
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
-    svgCoordinates(): string {
-        let doc = `<g id="things">\n`;
+    svgCoordinates(svgEl: SVGElement): void {
+        const coordsEl = svgEl.createSvg("g", { attr: { id: "coordinates" } });
         for (const region of this.regions) {
-            doc += region.svgCoordinates(this.textAttributes);
+            region.svgCoordinates(coordsEl, this.textAttributes);
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
-    svgRegions(): string {
-        let doc = `<g id="regions">\n`;
+    svgRegions(svgEl: SVGElement): void {
+        const regionsEl = svgEl.createSvg("g", { attr: { id: "regions" } });
         const attributes = this.attributes["default"] || `fill="none"`;
         for (const region of this.regions) {
-            doc += region.svgRegion(attributes);
+            region.svgRegion(regionsEl, attributes);
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
-    svgLineLabels(): string {
-        let doc = `<g id="line_labels">\n`;
+    svgLineLabels(svgEl: SVGElement): void {
+        const labelsEl = svgEl.createSvg("g", { attr: { id: "line_labels" } });
         for (const spline of this.splines) {
-            doc += spline.svgLabel();
+            spline.svgLabel(labelsEl);
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
-    svgLabels(): string {
-        let doc = `<g id="labels">\n`;
+    svgLabels(svgEl: SVGElement): void {
+        const labelsEl = svgEl.createSvg("g", { attr: { id: "labels" } });
         for (const region of this.regions) {
-            doc += region.svgLabel(this.labelAttributes, this.glowAttributes);
+            region.svgLabel(
+                labelsEl,
+                this.labelAttributes,
+                this.glowAttributes
+            );
         }
-        doc += `</g>\n`;
-        return doc;
     }
 
     svg(el: HTMLElement) {
