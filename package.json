@@ -1,7 +1,7 @@
 {
     "name": "text-mapper",
     "version": "0.1.0",
-    "description": "Render tor2e statblocks in Obsidian. (https://obsidian.md)",
+    "description": "Render hex maps in Obsidian. (https://obsidian.md)",
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",

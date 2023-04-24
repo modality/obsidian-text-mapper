@@ -1,4 +1,3 @@
-import { Point, Orientation } from "orientation";
 import {
     ATTRIBUTES_REGEX,
     PATH_ATTRIBUTES_REGEX,
@@ -15,9 +14,9 @@ import {
     ATTRIBUTE_MAP_REGEX,
     SVGElement,
 } from "./constants";
-
-import { Region } from "region";
-import { Spline } from "spline";
+import { Point, Orientation } from "./orientation";
+import { Region } from "./region";
+import { Spline } from "./spline";
 
 // https://alexschroeder.ch/cgit/text-mapper/tree/lib/Game/TextMapper/Mapper.pm
 export class TextMapperParser {
