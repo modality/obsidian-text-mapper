@@ -1,4 +1,5 @@
 import { SVGElement } from "./constants";
+import { Point, Orientation } from "orientation";
 
 export class Spline {
     types: string;
@@ -6,7 +7,8 @@ export class Spline {
     side: string;
     start: string;
     id: string;
-    points: number[][];
+    points: Point[];
+    orientation: any;
 
     constructor() {
         this.points = [];
@@ -15,10 +17,155 @@ export class Spline {
     addPoint(x: string, y: string) {
         const nX = parseInt(x);
         const nY = parseInt(y);
-        this.points.push([nX, nY]);
+        this.points.push(new Point(nX, nY));
     }
 
-    svg(svgEl: SVGElement): void {}
+    computeMissingPoints(): Point[] {
+        let i = 0;
+        let current = this.points[i++];
+        const result = [current];
+        while (i < this.points.length) {
+            current = this.oneStep(current, this.points[i]);
+            result.push(current);
+            if (
+                current.x == this.points[i].x &&
+                current.y == this.points[i].y
+            ) {
+                i++;
+            }
+        }
+        return result;
+    }
+
+    oneStep(from: Point, to: Point): Point {
+        // Brute forcing the "next" step by trying all the neighbors. The
+        // connection data to connect to neighboring hexes.
+        //
+        // Example Map             Index for the array
+        //
+        //      0201                      2
+        //  0102    0302               1     3
+        //      0202    0402
+        //  0103    0303               6     4
+        //      0203    0403              5
+        //  0104    0304
+        //
+        //  Note that the arithmetic changes when x is odd.
+
+        const delta = [
+            [
+                new Point(-1, 0),
+                new Point(0, -1),
+                new Point(+1, 0),
+                new Point(+1, +1),
+                new Point(0, +1),
+                new Point(-1, +1),
+            ], // x is even
+            [
+                new Point(-1, -1),
+                new Point(0, -1),
+                new Point(+1, -1),
+                new Point(+1, 0),
+                new Point(0, +1),
+                new Point(-1, 0),
+            ], // x is odd
+        ];
+
+        let min, best;
+
+        for (let i = 0; i < 6; i++) {
+            // make a new guess
+            let x = from.x + delta[from.x % 2][i].x;
+            let y = from.y + delta[from.x % 2][i].y;
+
+            let d = (to.x - x) * (to.x - x) + (to.y - y) * (to.y - y);
+            if (min === undefined || d < min) {
+                min = d;
+                best = new Point(x, y);
+            }
+        }
+
+        return best;
+    }
+
+    partway(from: Point, to: Point, lerp: number = 1): Point {
+        const pix1 = this.orientation.pixels(from);
+        const pix2 = this.orientation.pixels(to);
+        return new Point(
+            pix1.x + (pix2.x - pix1.x) * lerp,
+            pix1.y + (pix2.y - pix1.y) * lerp
+        );
+    }
+
+    svg(svgEl: SVGElement, orientation: any, pathAttributes: any): void {
+        this.orientation = orientation;
+        const points = this.computeMissingPoints();
+        let closed = false;
+        if (points.length == 0) {
+            return;
+        }
+
+        if (points[0].eq(points[points.length - 1])) {
+            closed = true;
+        }
+
+        let path = "";
+
+        if (closed) {
+            for (let i = 0; i < points.length - 1; i++) {
+                let current = points[i];
+                let next = points[i + 1];
+                if (path.length === 0) {
+                    let a = this.partway(current, next, 0.3).toString();
+                    let b = this.partway(current, next, 0.5).toString();
+                    let c = this.partway(
+                        points[points.length - 1],
+                        current,
+                        0.7
+                    ).toString();
+                    let d = this.partway(
+                        points[points.length - 1],
+                        current,
+                        0.5
+                    ).toString();
+                    path += `M${d} C${c} ${a} ${b}`;
+                } else {
+                    // continue curve
+                    let b = this.partway(current, next, 0.5).toString();
+                    let a = this.partway(current, next, 0.3).toString();
+                    path += ` S${a} ${b}`;
+                }
+            }
+        } else {
+            let current, next;
+            for (let i = 0; i < points.length - 1; i++) {
+                current = points[i];
+                next = points[i + 1];
+                if (path.length === 0) {
+                    // line from a to b; control point a required for following S commands
+                    let a = this.partway(current, next, 0.3).toString();
+                    let b = this.partway(current, next, 0.5).toString();
+                    path += `M${a} C${b} ${a} ${b}`;
+                } else {
+                    // continue curve
+                    let a = this.partway(current, next, 0.3).toString();
+                    let b = this.partway(current, next, 0.5).toString();
+                    path += ` S${a} ${b}`;
+                }
+            }
+            // end with a little stub
+            path += " L" + this.partway(current, next, 0.7).toString();
+        }
+
+        svgEl.createSvg("path", {
+            attr: {
+                id: this.id,
+                type: this.types,
+                ...pathAttributes[this.types],
+                d: path,
+            },
+        });
+    }
 
     svgLabel(
         svgEl: SVGElement,
@@ -36,8 +183,8 @@ export class Spline {
         if (this.side !== undefined) {
             pathAttributes["side"] = this.side;
         } else if (
-            this.points[1][0] < this.points[0][0] ||
-            (this.points.length > 2 && this.points[2][0] < this.points[0][0])
+            this.points[1].x < this.points[0].x ||
+            (this.points.length > 2 && this.points[2].x < this.points[0].x)
         ) {
             pathAttributes["side"] = "right";
         }

@@ -1,6 +1,8 @@
+import { Point, Orientation } from "orientation";
 import {
     ATTRIBUTES_REGEX,
     PATH_ATTRIBUTES_REGEX,
+    OPTION_REGEX,
     PATH_REGEX,
     XML_REGEX,
     TEXT_REGEX,
@@ -10,9 +12,6 @@ import {
     HEX_LABEL_REGEX,
     SPLINE_REGEX,
     SPLINE_POINT_REGEX,
-    DX,
-    DY,
-    HEX_CORNERS,
     ATTRIBUTE_MAP_REGEX,
     SVGElement,
 } from "./constants";
@@ -22,6 +21,7 @@ import { Spline } from "spline";
 
 // https://alexschroeder.ch/cgit/text-mapper/tree/lib/Game/TextMapper/Mapper.pm
 export class TextMapperParser {
+    options: any;
     regions: Region[]; // ' => sub { [] };
     attributes: any; // ' => sub { {} };
     defs: string[]; // ' => sub { [] };
@@ -32,9 +32,11 @@ export class TextMapperParser {
     textAttributes: any;
     glowAttributes: any;
     labelAttributes: any;
+    orientation: Orientation;
     // messages: string[]; // ' => sub { [] };
 
     constructor() {
+        this.options = {};
         this.regions = [];
         this.attributes = {};
         this.defs = [];
@@ -108,7 +110,16 @@ export class TextMapperParser {
             } else if (LABEL_REGEX.test(line)) {
                 const match = line.match(LABEL_REGEX);
                 this.labelAttributes = this.parseAttributes(match[1]);
+            } else if (OPTION_REGEX.test(line)) {
+                const match = line.match(OPTION_REGEX);
+                this.options[match[1]] = true;
             }
+        }
+
+        if (this.options.horizontal) {
+            this.orientation = new Orientation(false);
+        } else {
+            this.orientation = new Orientation();
         }
     }
 
@@ -137,19 +148,11 @@ export class TextMapperParser {
         return output;
     }
 
-    viewbox(minx: number, miny: number, maxx: number, maxy: number): number[] {
-        return [
-            Math.floor((minx * DX * 3) / 2 - DX - 60),
-            Math.floor((miny - 1.5) * DY),
-            Math.floor((maxx * DX * 3) / 2 + DX + 60),
-            Math.floor((maxy + 1) * DY),
-        ];
-    }
-
     shape(svgEl: SVGElement, attributes: any) {
-        const points = HEX_CORNERS.map((corner) => {
-            return `${corner[0].toFixed(1)},${corner[1].toFixed(1)}`;
-        }).join(" ");
+        const points = this.orientation
+            .hexCorners()
+            .map((corner: Point) => corner.toString())
+            .join(" ");
         svgEl.createSvg("polygon", {
             attr: {
                 ...attributes,
@@ -190,7 +193,7 @@ export class TextMapperParser {
             }
         }
 
-        const [vx1, vy1, vx2, vy2] = this.viewbox(
+        const [vx1, vy1, vx2, vy2] = this.orientation.viewbox(
             min_x_overall,
             min_y_overall,
             max_x_overall,
@@ -267,28 +270,26 @@ export class TextMapperParser {
                 }
             }
         }
-        // doc += `</defs>\n`;
-        // return doc;
     }
 
     svgBackgrounds(svgEl: SVGElement): void {
         const bgEl = svgEl.createSvg("g", { attr: { id: "backgrounds" } });
         for (const thing of this.things) {
-            thing.svg(bgEl);
+            thing.svg(bgEl, this.orientation);
         }
     }
 
     svgLines(svgEl: SVGElement): void {
         const splinesEl = svgEl.createSvg("g", { attr: { id: "lines" } });
         for (const spline of this.splines) {
-            spline.svg(splinesEl);
+            spline.svg(splinesEl, this.orientation, this.pathAttributes);
         }
     }
 
     svgThings(svgEl: SVGElement): void {
         const thingsEl = svgEl.createSvg("g", { attr: { id: "things" } });
         for (const thing of this.things) {
-            thing.svg(thingsEl);
+            thing.svg(thingsEl, this.orientation);
             // should DROP this mapper's attributes
         }
     }
@@ -296,7 +297,11 @@ export class TextMapperParser {
     svgCoordinates(svgEl: SVGElement): void {
         const coordsEl = svgEl.createSvg("g", { attr: { id: "coordinates" } });
         for (const region of this.regions) {
-            region.svgCoordinates(coordsEl, this.textAttributes);
+            region.svgCoordinates(
+                coordsEl,
+                this.orientation,
+                this.textAttributes
+            );
         }
     }
 
@@ -304,7 +309,7 @@ export class TextMapperParser {
         const regionsEl = svgEl.createSvg("g", { attr: { id: "regions" } });
         const attributes = this.attributes["default"] || `fill="none"`;
         for (const region of this.regions) {
-            region.svgRegion(regionsEl, attributes);
+            region.svgRegion(regionsEl, this.orientation, attributes);
         }
     }
 
@@ -324,6 +329,7 @@ export class TextMapperParser {
         for (const region of this.regions) {
             region.svgLabel(
                 labelsEl,
+                this.orientation,
                 this.labelAttributes,
                 this.glowAttributes
             );

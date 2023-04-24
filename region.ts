@@ -1,4 +1,5 @@
-import { DX, DY, HEX_CORNERS, SVGElement } from "./constants";
+import { SVGElement } from "./constants";
+import { Point, Orientation } from "orientation";
 
 export class Region {
     x: number;
@@ -11,50 +12,66 @@ export class Region {
         this.types = [];
     }
 
-    pixels(addX: number, addY: number) {
-        return [
-            (this.x * DX * 3) / 2 + addX,
-            this.y * DY - ((this.x % 2) * DY) / 2 + addY,
-        ];
+    pixels(orientation: Orientation, addX: number, addY: number): number[] {
+        const pix = orientation.pixels(new Point(this.x, this.y), addX, addY);
+        return [pix.x, pix.y];
     }
 
-    svg(svgEl: SVGElement): void {
+    svg(svgEl: SVGElement, orientation: any): void {
         let data = "";
-        const pixels = this.pixels(0, 0);
+        const pix = orientation.pixels(new Point(this.x, this.y));
         for (const type of this.types) {
             svgEl.createSvg("use", {
                 attr: {
-                    x: pixels[0].toFixed(1),
-                    y: pixels[1].toFixed(1),
+                    x: pix.x.toFixed(1),
+                    y: pix.y.toFixed(1),
                     href: `#${type}`,
                 },
             });
         }
     }
 
-    svgCoordinates(svgEl: SVGElement, textAttributes: string): void {
-        const pixels = this.pixels(0, -DY * 0.4);
+    svgCoordinates(
+        svgEl: SVGElement,
+        orientation: Orientation,
+        textAttributes: any
+    ): void {
+        const pix = orientation.pixels(
+            new Point(this.x, this.y),
+            0,
+            -orientation.dy * orientation.labelOffset
+        );
+
         const coordEl = svgEl.createSvg("text", {
             attr: {
+                ...textAttributes,
                 "text-anchor": "middle",
-                x: pixels[0].toFixed(1),
-                y: pixels[1].toFixed(1),
+                x: pix.x.toFixed(1),
+                y: pix.y.toFixed(1),
             },
         });
         coordEl.textContent = `${this.x}.${this.y}`;
     }
 
-    svgRegion(svgEl: SVGElement, attributes: any): void {
+    svgRegion(
+        svgEl: SVGElement,
+        orientation: Orientation,
+        attributes: any
+    ): void {
         let id = "hex";
         if (this.x < 100 && this.y < 100) {
             id += `${this.x}${this.y}`;
         } else {
             id += `${this.x}.${this.y}`;
         }
-        const points = HEX_CORNERS.map((corner) => {
-            const pixels = this.pixels(corner[0], corner[1]);
-            return `${pixels[0].toFixed(1)},${pixels[1].toFixed(1)}`;
-        }).join(" ");
+        const points = orientation
+            .hexCorners()
+            .map((corner: Point) => {
+                return orientation
+                    .pixels(new Point(this.x, this.y), corner.x, corner.y)
+                    .toString();
+            })
+            .join(" ");
 
         svgEl.createSvg("polygon", {
             attr: {
@@ -67,6 +84,7 @@ export class Region {
 
     svgLabel(
         svgEl: SVGElement,
+        orientation: Orientation,
         labelAttributes: any,
         glowAttributes: any
     ): void {
@@ -79,14 +97,18 @@ export class Region {
         if (this.size !== undefined) {
             attributes["font-size"] = this.size;
         }
-        const pixels = this.pixels(0, DY * 0.4);
+        const pix = orientation.pixels(
+            new Point(this.x, this.y),
+            0,
+            orientation.dy * orientation.labelOffset
+        );
         const gEl = svgEl.createSvg("g");
 
         const glowEl = gEl.createSvg("text", {
             attr: {
                 "text-anchor": "middle",
-                x: pixels[0].toFixed(1),
-                y: pixels[1].toFixed(1),
+                x: pix.x.toFixed(1),
+                y: pix.y.toFixed(1),
                 ...attributes,
                 ...glowAttributes,
             },
@@ -96,8 +118,8 @@ export class Region {
         const labelEl = gEl.createSvg("text", {
             attr: {
                 "text-anchor": "middle",
-                x: pixels[0].toFixed(1),
-                y: pixels[1].toFixed(1),
+                x: pix.x.toFixed(1),
+                y: pix.y.toFixed(1),
                 ...attributes,
             },
         });
