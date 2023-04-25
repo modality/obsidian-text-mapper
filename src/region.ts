@@ -17,10 +17,12 @@ export class Region {
         return [pix.x, pix.y];
     }
 
-    svg(svgEl: SVGElement, orientation: any): void {
-        let data = "";
+    svg(svgEl: SVGElement, orientation: Orientation, types: string[]): void {
         const pix = orientation.pixels(new Point(this.x, this.y));
         for (const type of this.types) {
+            if (!types.includes(type)) {
+                continue;
+            }
             svgEl.createSvg("use", {
                 attr: {
                     x: pix.x.toFixed(1),

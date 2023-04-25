@@ -175,6 +175,7 @@ export class Spline {
         if (this.label === undefined) {
             return;
         }
+        const points = this.computeMissingPoints();
         const pathAttributes: any = {
             href: `#${this.id}`,
         };
@@ -183,8 +184,8 @@ export class Spline {
         if (this.side !== undefined) {
             pathAttributes["side"] = this.side;
         } else if (
-            this.points[1].x < this.points[0].x ||
-            (this.points.length > 2 && this.points[2].x < this.points[0].x)
+            points[1].x < points[0].x ||
+            (points.length > 2 && points[2].x < points[0].x)
         ) {
             pathAttributes["side"] = "right";
         }

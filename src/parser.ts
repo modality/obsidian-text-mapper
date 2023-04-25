@@ -26,7 +26,6 @@ export class TextMapperParser {
     defs: string[]; // ' => sub { [] };
     path: any; // ' => sub { {} };
     splines: Spline[]; // ' => sub { [] };
-    things: Region[]; // ' => sub { [] };
     pathAttributes: any; // ' => sub { {} };
     textAttributes: any;
     glowAttributes: any;
@@ -41,7 +40,6 @@ export class TextMapperParser {
         this.defs = [];
         this.path = {};
         this.splines = [];
-        this.things = [];
         this.pathAttributes = {};
         this.textAttributes = "";
         this.glowAttributes = "";
@@ -72,7 +70,6 @@ export class TextMapperParser {
                 const types = rest.split(/\s+/).filter((t) => t.length > 0);
                 region.types = types;
                 this.regions.push(region);
-                this.things.push(region);
             } else if (SPLINE_REGEX.test(line)) {
                 // path
                 const match = line.match(SPLINE_REGEX);
@@ -273,8 +270,9 @@ export class TextMapperParser {
 
     svgBackgrounds(svgEl: SVGElement): void {
         const bgEl = svgEl.createSvg("g", { attr: { id: "backgrounds" } });
-        for (const thing of this.things) {
-            thing.svg(bgEl, this.orientation);
+        const whitelist = Object.keys(this.attributes);
+        for (const region of this.regions) {
+            region.svg(bgEl, this.orientation, whitelist);
         }
     }
 
@@ -287,8 +285,10 @@ export class TextMapperParser {
 
     svgThings(svgEl: SVGElement): void {
         const thingsEl = svgEl.createSvg("g", { attr: { id: "things" } });
-        for (const thing of this.things) {
-            thing.svg(thingsEl, this.orientation);
+        const blacklist = Object.keys(this.attributes);
+        for (const region of this.regions) {
+            const filtered = region.types.filter((t) => !blacklist.includes(t));
+            region.svg(thingsEl, this.orientation, filtered);
             // should DROP this mapper's attributes
         }
     }
@@ -306,7 +306,7 @@ export class TextMapperParser {
 
     svgRegions(svgEl: SVGElement): void {
         const regionsEl = svgEl.createSvg("g", { attr: { id: "regions" } });
-        const attributes = this.attributes["default"] || `fill="none"`;
+        const attributes = this.attributes["default"];
         for (const region of this.regions) {
             region.svgRegion(regionsEl, this.orientation, attributes);
         }
