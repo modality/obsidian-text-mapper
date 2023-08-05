@@ -130,11 +130,9 @@ export class TextMapperParser {
             [segment, rest] = this.splitPathSegments(rest);
 
             if (segment === null) {
-                console.log(`found nothing more ${rest} ${splinePath}`)
                 break;
             }
             const pointMatch = segment.match(SPLINE_POINT_REGEX);
-            console.log(`found points, x: ${pointMatch[1]}, y: ${pointMatch[2]}`)
             spline.addPoint(pointMatch[1], pointMatch[2]);
         }
 
