@@ -10,6 +10,7 @@ import {
     HEX_REGEX,
     HEX_LABEL_REGEX,
     SPLINE_REGEX,
+    SPLINE_ELEMENT_SPLIT_REGEX,
     SPLINE_POINT_REGEX,
     ATTRIBUTE_MAP_REGEX,
     SVGElement,
@@ -53,37 +54,10 @@ export class TextMapperParser {
                 continue;
             }
             if (HEX_REGEX.test(line)) {
-                // hex
-                const match = line.match(HEX_REGEX);
-                const region = this.makeRegion(
-                    match[1],
-                    match[2],
-                    match[3] || "00"
-                );
-                let rest = match[4];
-                while (HEX_LABEL_REGEX.test(rest)) {
-                    const labelMatch = rest.match(HEX_LABEL_REGEX);
-                    region.label = labelMatch[1];
-                    region.size = labelMatch[2];
-                    rest = rest.replace(HEX_LABEL_REGEX, "");
-                }
-                const types = rest.split(/\s+/).filter((t) => t.length > 0);
-                region.types = types;
+                const region = this.parseRegion(line);
                 this.regions.push(region);
             } else if (SPLINE_REGEX.test(line)) {
-                // path
-                const match = line.match(SPLINE_REGEX);
-                const spline = this.makeSpline();
-                let splinePath = match[1];
-                spline.types = match[2];
-                spline.label = match[3];
-                spline.side = match[4];
-                spline.start = match[5];
-                spline.id = "line" + lineId++;
-                for (const pointStr of splinePath.split("-")) {
-                    const pointMatch = pointStr.match(SPLINE_POINT_REGEX);
-                    spline.addPoint(pointMatch[1], pointMatch[2]);
-                }
+                const spline = this.parsePath(line, lineId);
                 this.splines.push(spline);
             } else if (ATTRIBUTES_REGEX.test(line)) {
                 const match = line.match(ATTRIBUTES_REGEX);
@@ -117,6 +91,64 @@ export class TextMapperParser {
         } else {
             this.orientation = new Orientation();
         }
+    }
+
+    parseRegion(line: string) {
+        // hex
+        const match = line.match(HEX_REGEX);
+        const region = this.makeRegion(
+            match[1],
+            match[2],
+            match[3] || "00"
+        );
+        let rest = match[4];
+        while (HEX_LABEL_REGEX.test(rest)) {
+            const labelMatch = rest.match(HEX_LABEL_REGEX);
+            region.label = labelMatch[1];
+            region.size = labelMatch[2];
+            rest = rest.replace(HEX_LABEL_REGEX, "");
+        }
+        const types = rest.split(/\s+/).filter((t) => t.length > 0);
+        region.types = types;
+        return region;
+    }
+
+    parsePath(line: string, lineId: number) {
+        // path
+        const match = line.match(SPLINE_REGEX);
+        const spline = this.makeSpline();
+        let splinePath = match[1];
+        spline.types = match[2];
+        spline.label = match[3];
+        spline.side = match[4];
+        spline.start = match[5];
+        spline.id = "line" + lineId++;
+
+        let rest = line;
+        while(true) {
+            let segment: string;
+            [segment, rest] = this.splitPathSegments(rest);
+
+            if (segment === null) {
+                console.log(`found nothing more ${rest} ${splinePath}`)
+                break;
+            }
+            const pointMatch = segment.match(SPLINE_POINT_REGEX);
+            console.log(`found points, x: ${pointMatch[1]}, y: ${pointMatch[2]}`)
+            spline.addPoint(pointMatch[1], pointMatch[2]);
+        }
+
+        return spline;
+    }
+
+    private splitPathSegments(splinePath: string) : [string, string] {
+        let match = splinePath.match(SPLINE_ELEMENT_SPLIT_REGEX)
+
+        if (match === null) {
+            return [null, splinePath];
+        }
+
+        return [match[1], match[2]];
     }
 
     def(what: string) {
