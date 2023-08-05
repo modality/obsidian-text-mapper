@@ -78,10 +78,10 @@ export class Orientation {
     pixels(pt: Point, offsetX: number = 0, offsetY: number = 0): Point {
         if (this.flatTop) {
             const x = (pt.x * this.dx * 3) / 2 + offsetX;
-            const y = pt.y * this.dy * 2 - (pt.x % 2) * this.dy + offsetY;
+            const y = pt.y * this.dy * 2 - (Math.abs(pt.x) % 2) * this.dy + offsetY;
             return new Point(x, y);
         } else {
-            const x = pt.x * this.dx * 2 - (pt.y % 2) * this.dx + offsetX;
+            const x = pt.x * this.dx * 2 - (Math.abs(pt.y) % 2) * this.dx + offsetX;
             const y = (pt.y * this.dy * 3) / 2 + offsetY;
             return new Point(x, y);
         }
