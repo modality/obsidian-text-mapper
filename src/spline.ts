@@ -75,8 +75,9 @@ export class Spline {
 
         for (let i = 0; i < 6; i++) {
             // make a new guess
-            let x = from.x + delta[from.x % 2][i].x;
-            let y = from.y + delta[from.x % 2][i].y;
+            let offset = Math.abs(from.x % 2);
+            let x = from.x + delta[offset][i].x;
+            let y = from.y + delta[offset][i].y;
 
             let d = (to.x - x) * (to.x - x) + (to.y - y) * (to.y - y);
             if (min === undefined || d < min) {
