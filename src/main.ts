@@ -3,6 +3,7 @@ import {
     MarkdownRenderChild,
     Plugin,
 } from "obsidian";
+import { APOCALYPSE } from './apocalypse';
 import { ParseError } from "./error";
 import { GNOMEYLAND } from "./gnomeyland";
 import { TextMapperParser } from "./parser";
@@ -40,7 +41,7 @@ export class TextMapper extends MarkdownRenderChild {
         super(containerEl);
         this.textMapperEl = this.containerEl.createDiv({ cls: "textmapper" });
 
-        const totalSource = source.split("\n").concat(GNOMEYLAND.split("\n"));
+        const totalSource = source.split("\n").concat(GNOMEYLAND.split("\n")).concat(APOCALYPSE.split("\n"));
 
         this.parser = new TextMapperParser();
         this.parser.process(totalSource);
