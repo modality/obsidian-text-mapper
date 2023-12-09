@@ -14,3 +14,7 @@ yarn.lock
 # obsidian
 data.json
 main.js
+
+# Intellij IDEA
+/.idea/
+*.iml
