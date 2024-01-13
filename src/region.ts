@@ -52,7 +52,11 @@ export class Region {
                 y: pix.y.toFixed(1),
             },
         });
-        coordEl.textContent = `${this.x}.${this.y}`;
+
+        const xStr = this.x.toString().padStart(2, "0");
+        const yStr = this.y.toString().padStart(2, "0");
+
+        coordEl.textContent = `${xStr}${yStr}`;
     }
 
     svgRegion(

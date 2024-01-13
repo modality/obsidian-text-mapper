@@ -247,7 +247,6 @@ export class TextMapperParser {
         });
 
         return svgEl;
-        // header += `<!-- min (${min_x_overall}, ${min_y_overall}), max (${max_x_overall}, ${max_y_overall}) -->\n`;
     }
 
     svgDefs(svgEl: SVGElement): void {
@@ -320,7 +319,6 @@ export class TextMapperParser {
         for (const region of this.regions) {
             const filtered = region.types.filter((t) => !blacklist.includes(t));
             region.svg(thingsEl, this.orientation, filtered);
-            // should DROP this mapper's attributes
         }
     }
 

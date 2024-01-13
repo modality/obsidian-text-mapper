@@ -8,7 +8,7 @@ export class Spline {
     start: string;
     id: string;
     points: Point[];
-    orientation: any;
+    orientation: Orientation;
 
     constructor() {
         this.points = [];
@@ -52,33 +52,67 @@ export class Spline {
         //
         //  Note that the arithmetic changes when x is odd.
 
-        const delta = [
-            [
-                new Point(-1, 0),
-                new Point(0, -1),
-                new Point(+1, 0),
-                new Point(+1, +1),
-                new Point(0, +1),
-                new Point(-1, +1),
-            ], // x is even
-            [
-                new Point(-1, -1),
-                new Point(0, -1),
-                new Point(+1, -1),
-                new Point(+1, 0),
-                new Point(0, +1),
-                new Point(-1, 0),
-            ], // x is odd
-        ];
+        // We need to use a different algorithm with horizontal hexes
+        // Example map:          Index for the array
+        //     0301  0401           1   2
+        //  0202  0302  0402      6       3
+        //     0303  0403           5   4
+        //  0204  0304  0404
+
+        let delta;
+        if (this.orientation.flatTop) {
+            delta = [
+                [
+                    new Point(-1, 0),
+                    new Point(0, -1),
+                    new Point(+1, 0),
+                    new Point(+1, +1),
+                    new Point(0, +1),
+                    new Point(-1, +1),
+                ], // x is even
+                [
+                    new Point(-1, -1),
+                    new Point(0, -1),
+                    new Point(+1, -1),
+                    new Point(+1, 0),
+                    new Point(0, +1),
+                    new Point(-1, 0),
+                ], // x is odd
+            ];
+        } else {
+            delta = [
+                [
+                    new Point(0, -1),
+                    new Point(1, -1),
+                    new Point(+1, 0),
+                    new Point(+1, +1),
+                    new Point(0, +1),
+                    new Point(-1, 0),
+                ], // Y is even
+                [
+                    new Point(-1, -1),
+                    new Point(0, -1),
+                    new Point(+1, 0),
+                    new Point(0, +1),
+                    new Point(-1, +1),
+                    new Point(-1, 0),
+                ], // Y is odd
+            ];
+        }
 
         let min, best;
 
         for (let i = 0; i < 6; i++) {
             // make a new guess
-            let offset = Math.abs(from.x % 2);
-            let x = from.x + delta[offset][i].x;
-            let y = from.y + delta[offset][i].y;
+            let offset;
+            if (this.orientation.flatTop) {
+                offset = Math.abs(from.x % 2);
+            } else {
+                offset = Math.abs(from.y % 2);
+            }
 
+            const x = from.x + delta[offset][i].x;
+            const y = from.y + delta[offset][i].y;
             let d = (to.x - x) * (to.x - x) + (to.y - y) * (to.y - y);
             if (min === undefined || d < min) {
                 min = d;
