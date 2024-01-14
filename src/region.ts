@@ -96,6 +96,11 @@ export class Region {
         const attributes = {
             ...labelAttributes,
         };
+
+        //Computing the label and link
+        const textContent = this.computeLinkAndLabel(this.label).length > 1 ? this.computeLinkAndLabel(this.label)[1] : this.computeLinkAndLabel(this.label)[0];
+        const linkContent = this.computeLinkAndLabel(this.label)[0];
+
         if (this.size !== undefined) {
             attributes["font-size"] = this.size;
         }
@@ -115,16 +120,56 @@ export class Region {
                 ...glowAttributes,
             },
         });
-        glowEl.textContent = this.label;
+        glowEl.textContent = textContent;
 
-        const labelEl = gEl.createSvg("text", {
-            attr: {
-                "text-anchor": "middle",
-                x: pix.x.toFixed(1),
-                y: pix.y.toFixed(1),
-                ...attributes,
-            },
-        });
-        labelEl.textContent = this.label;
+        //Only create a link if there is one.
+        if (textContent !== linkContent) {
+            //Add in clickable link for Obsidian
+            const labelLinkEl = gEl.createSvg("a", {
+                attr: {
+                    'data-tooltip-position': 'top',
+                    'aria-label': linkContent,
+                    'href': linkContent,
+                    'data-href': linkContent,
+                    class: 'internal-link',
+                    target: '_blank',
+                    rel: 'noopener'
+                },
+            });
+
+            const labelEl = labelLinkEl.createSvg("text", {
+                attr: {
+                    "text-anchor": "middle",
+                    x: pix.x.toFixed(1),
+                    y: pix.y.toFixed(1),
+                    ...attributes,
+
+                },
+            });
+
+            labelEl.textContent = textContent;
+        } else {
+            const labelEl = gEl.createSvg("text", {
+                attr: {
+                    "text-anchor": "middle",
+                    x: pix.x.toFixed(1),
+                    y: pix.y.toFixed(1),
+                    ...attributes,
+                },
+            });
+
+            labelEl.textContent = textContent;
+        }
+    }
+
+    computeLinkAndLabel(label: string): [string, string] {
+        let link = label;
+        let display = label;
+        if (label.includes('|')) {
+            const parts = label.split('|');
+            link = parts[0];
+            display = parts[1];
+        }
+        return [link, display];
     }
 }

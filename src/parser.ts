@@ -231,6 +231,7 @@ export class TextMapperParser {
         // @ts-ignore
         const svgEl: SVGElement = el.createSvg("svg", {
             attr: {
+                'xmlns:xlink': 'http://www.w3.org/1999/xlink',
                 viewBox: `${vx1} ${vy1} ${width} ${height}`,
             },
         });
