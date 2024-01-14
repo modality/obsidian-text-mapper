@@ -57,7 +57,7 @@ export class TextMapperParser {
                 const region = this.parseRegion(line);
                 this.regions.push(region);
             } else if (SPLINE_REGEX.test(line)) {
-                const spline = this.parsePath(line, lineId);
+                const spline = this.parsePath(line, lineId++);
                 this.splines.push(spline);
             } else if (ATTRIBUTES_REGEX.test(line)) {
                 const match = line.match(ATTRIBUTES_REGEX);
@@ -122,7 +122,7 @@ export class TextMapperParser {
         spline.label = match[3];
         spline.side = match[4];
         spline.start = match[5];
-        spline.id = "line" + lineId++;
+        spline.id = "line" + lineId;
 
         let rest = line;
         while(true) {
