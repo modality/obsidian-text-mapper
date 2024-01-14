@@ -35,7 +35,11 @@ export class TextMapperParser {
     // messages: string[]; // ' => sub { [] };
 
     constructor() {
-        this.options = {};
+        this.options = {
+            horizontal: false,
+            "coordinates-format": "{X}{Y}",
+            "swap-even-odd": false,
+        };
         this.regions = [];
         this.attributes = {};
         this.defs = [];
@@ -82,25 +86,30 @@ export class TextMapperParser {
                 this.labelAttributes = this.parseAttributes(match[1]);
             } else if (OPTION_REGEX.test(line)) {
                 const match = line.match(OPTION_REGEX);
-                this.options[match[1]] = true;
+                const opt = this.parseOption(match[1]);
+                if (opt.valid) {
+                    this.options[opt.key] = opt.value;
+                }
             }
         }
 
         if (this.options.horizontal) {
-            this.orientation = new Orientation(false);
+            this.orientation = new Orientation(
+                false,
+                this.options["swap-even-odd"]
+            );
         } else {
-            this.orientation = new Orientation();
+            this.orientation = new Orientation(
+                true,
+                this.options["swap-even-odd"]
+            );
         }
     }
 
     parseRegion(line: string) {
         // hex
         const match = line.match(HEX_REGEX);
-        const region = this.makeRegion(
-            match[1],
-            match[2],
-            match[3] || "00"
-        );
+        const region = this.makeRegion(match[1], match[2], match[3] || "00");
         let rest = match[4];
         while (HEX_LABEL_REGEX.test(rest)) {
             const labelMatch = rest.match(HEX_LABEL_REGEX);
@@ -125,7 +134,7 @@ export class TextMapperParser {
         spline.id = "line" + lineId;
 
         let rest = line;
-        while(true) {
+        while (true) {
             let segment: string;
             [segment, rest] = this.splitPathSegments(rest);
 
@@ -139,8 +148,8 @@ export class TextMapperParser {
         return spline;
     }
 
-    private splitPathSegments(splinePath: string) : [string, string] {
-        let match = splinePath.match(SPLINE_ELEMENT_SPLIT_REGEX)
+    private splitPathSegments(splinePath: string): [string, string] {
+        let match = splinePath.match(SPLINE_ELEMENT_SPLIT_REGEX);
 
         if (match === null) {
             return [null, splinePath];
@@ -174,6 +183,29 @@ export class TextMapperParser {
         return output;
     }
 
+    parseOption(optionStr: string): any {
+        const option: any = {
+            valid: false,
+            key: "",
+            value: "",
+        };
+        const tokens = optionStr.split(" ");
+        if (tokens.length < 1) {
+            return option;
+        }
+
+        option.key = tokens[0];
+
+        if (option.key === "horizontal" || option.key === "swap-even-odd") {
+            option.valid = true;
+            option.value = true;
+        } else if (option.key === "coordinates-format") {
+            option.valid = true;
+            option.value = tokens.slice(1).join(" ");
+        }
+        return option;
+    }
+
     shape(svgEl: SVGElement, attributes: any) {
         const points = this.orientation
             .hexCorners()
@@ -193,45 +225,15 @@ export class TextMapperParser {
             // @ts-ignore
             return el.createSvg("svg");
         }
-        // These are required to calculate the viewBox for the SVG. Min and max X are
-        // what you would expect. Min and max Y are different, however, since we want
-        // to count all the rows on all the levels, plus an extra separator between
-        // them. Thus, min y is the min y of the first level, and max y is the min y of
-        // the first level + 1 for every level beyond the first, + all the rows for
-        // each level.
-        let min_x_overall = undefined;
-        let max_x_overall = undefined;
-        let min_y_overall = undefined;
-        let max_y_overall = undefined;
 
-        for (const region of this.regions) {
-            if (min_x_overall == undefined || region.x < min_x_overall) {
-                min_x_overall = region.x;
-            }
-            if (min_y_overall == undefined || region.y < min_y_overall) {
-                min_y_overall = region.y;
-            }
-            if (max_x_overall == undefined || region.x > max_x_overall) {
-                max_x_overall = region.x;
-            }
-            if (max_y_overall == undefined || region.y > max_y_overall) {
-                max_y_overall = region.y;
-            }
-        }
-
-        const [vx1, vy1, vx2, vy2] = this.orientation.viewbox(
-            min_x_overall,
-            min_y_overall,
-            max_x_overall,
-            max_y_overall
-        );
+        const [vx1, vy1, vx2, vy2] = this.orientation.viewbox(this.regions);
         const width = (vx2 - vx1).toFixed(0);
         const height = (vy2 - vy1).toFixed(0);
 
         // @ts-ignore
         const svgEl: SVGElement = el.createSvg("svg", {
             attr: {
-                'xmlns:xlink': 'http://www.w3.org/1999/xlink',
+                "xmlns:xlink": "http://www.w3.org/1999/xlink",
                 viewBox: `${vx1} ${vy1} ${width} ${height}`,
             },
         });
@@ -328,7 +330,8 @@ export class TextMapperParser {
             region.svgCoordinates(
                 coordsEl,
                 this.orientation,
-                this.textAttributes
+                this.textAttributes,
+                this.options["coordinates-format"]
             );
         }
     }

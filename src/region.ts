@@ -36,7 +36,8 @@ export class Region {
     svgCoordinates(
         svgEl: SVGElement,
         orientation: Orientation,
-        textAttributes: any
+        textAttributes: any,
+        coordinatesFormat: string
     ): void {
         const pix = orientation.pixels(
             new Point(this.x, this.y),
@@ -56,7 +57,11 @@ export class Region {
         const xStr = this.x.toString().padStart(2, "0");
         const yStr = this.y.toString().padStart(2, "0");
 
-        coordEl.textContent = `${xStr}${yStr}`;
+        const content = coordinatesFormat
+            .replace("{X}", xStr)
+            .replace("{Y}", yStr);
+
+        coordEl.textContent = content;
     }
 
     svgRegion(
@@ -102,7 +107,10 @@ export class Region {
         };
 
         //Computing the label and link
-        const textContent = this.computeLinkAndLabel(this.label).length > 1 ? this.computeLinkAndLabel(this.label)[1] : this.computeLinkAndLabel(this.label)[0];
+        const textContent =
+            this.computeLinkAndLabel(this.label).length > 1
+                ? this.computeLinkAndLabel(this.label)[1]
+                : this.computeLinkAndLabel(this.label)[0];
         const linkContent = this.computeLinkAndLabel(this.label)[0];
 
         if (this.size !== undefined) {
@@ -131,13 +139,13 @@ export class Region {
             //Add in clickable link for Obsidian
             const labelLinkEl = gEl.createSvg("a", {
                 attr: {
-                    'data-tooltip-position': 'top',
-                    'aria-label': linkContent,
-                    'href': linkContent,
-                    'data-href': linkContent,
-                    class: 'internal-link',
-                    target: '_blank',
-                    rel: 'noopener'
+                    "data-tooltip-position": "top",
+                    "aria-label": linkContent,
+                    href: linkContent,
+                    "data-href": linkContent,
+                    class: "internal-link",
+                    target: "_blank",
+                    rel: "noopener",
                 },
             });
 
@@ -147,7 +155,6 @@ export class Region {
                     x: pix.x.toFixed(1),
                     y: pix.y.toFixed(1),
                     ...attributes,
-
                 },
             });
 
@@ -169,8 +176,8 @@ export class Region {
     computeLinkAndLabel(label: string): [string, string] {
         let link = label;
         let display = label;
-        if (label.includes('|')) {
-            const parts = label.split('|');
+        if (label.includes("|")) {
+            const parts = label.split("|");
             link = parts[0];
             display = parts[1];
         }
