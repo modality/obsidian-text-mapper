@@ -106,8 +106,11 @@ export class Orientation {
                 offsetY;
             return new Point(x, y);
         } else {
+            const evenOdd = (this.swapEvenOdd ? 1 : 0) * (pt.y % 2);
             const x =
-                pt.x * this.dx * 2 - (Math.abs(pt.y) % 2) * this.dx + offsetX;
+                (pt.x + evenOdd) * this.dx * 2 -
+                (Math.abs(pt.y) % 2) * this.dx +
+                offsetX;
             const y = (pt.y * this.dy * 3) / 2 + offsetY;
             return new Point(x, y);
         }

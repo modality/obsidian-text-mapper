@@ -1,5 +1,6 @@
 import { SVGElement } from "./constants";
 import { Point, Orientation } from "./orientation";
+import { NamespaceFunction } from "./constants";
 
 export class Region {
     x: number;
@@ -7,9 +8,12 @@ export class Region {
     types: string[];
     label: string;
     size: string;
+    id: string;
+    namespace: NamespaceFunction;
 
-    constructor() {
+    constructor(namespace: NamespaceFunction) {
         this.types = [];
+        this.namespace = namespace;
     }
 
     pixels(orientation: Orientation, addX: number, addY: number): number[] {
@@ -23,11 +27,12 @@ export class Region {
             if (!types.includes(type)) {
                 continue;
             }
+            const namespaced = this.namespace(type);
             svgEl.createSvg("use", {
                 attr: {
                     x: pix.x.toFixed(1),
                     y: pix.y.toFixed(1),
-                    href: `#${type}`,
+                    href: `#${namespaced}`,
                 },
             });
         }
@@ -69,12 +74,6 @@ export class Region {
         orientation: Orientation,
         attributes: any
     ): void {
-        let id = "hex";
-        if (this.x < 100 && this.y < 100) {
-            id += `${this.x}${this.y}`;
-        } else {
-            id += `${this.x}.${this.y}`;
-        }
         const points = orientation
             .hexCorners()
             .map((corner: Point) => {
@@ -87,7 +86,7 @@ export class Region {
         svgEl.createSvg("polygon", {
             attr: {
                 ...attributes,
-                id,
+                id: this.namespace(this.id),
                 points,
             },
         });
@@ -106,7 +105,7 @@ export class Region {
             ...labelAttributes,
         };
 
-        //Computing the label and link
+        // Computing the label and link
         const textContent =
             this.computeLinkAndLabel(this.label).length > 1
                 ? this.computeLinkAndLabel(this.label)[1]

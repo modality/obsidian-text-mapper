@@ -13,9 +13,16 @@ export const SPLINE_REGEX =
 export const SPLINE_ELEMENT_SPLIT_REGEX = /^(-?\d\d-?\d\d)-?(.* )/;
 export const SPLINE_POINT_REGEX = /(-?\d\d)(-?\d\d)/;
 export const ATTRIBUTE_MAP_REGEX = /(\S+)="([^"]+)"/g;
+export const SVG_CHOMP_WHITESPACE_REGEX = /(>)(\s+)(<)/g;
+export const SVG_ID_REGEX = /(id=")(\S+)(")/g;
+export const SVG_HREF_REGEX = /(xlink:href="#)(\S+)(")/g;
 
 export interface SVGElement {
     createSvg(tag: string, options?: any): SVGElement;
     innerHTML: string;
     textContent: string;
 }
+
+export type NamespaceFunction = {
+    (what: string): string;
+};
