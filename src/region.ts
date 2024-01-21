@@ -1,5 +1,6 @@
 import { SVGElement } from "./constants";
 import { Point, Orientation } from "./orientation";
+import { NamespaceFunction } from "./constants";
 
 export class Region {
     x: number;
@@ -7,9 +8,12 @@ export class Region {
     types: string[];
     label: string;
     size: string;
+    id: string;
+    namespace: NamespaceFunction;
 
-    constructor() {
+    constructor(namespace: NamespaceFunction) {
         this.types = [];
+        this.namespace = namespace;
     }
 
     pixels(orientation: Orientation, addX: number, addY: number): number[] {
@@ -23,11 +27,12 @@ export class Region {
             if (!types.includes(type)) {
                 continue;
             }
+            const namespaced = this.namespace(type);
             svgEl.createSvg("use", {
                 attr: {
                     x: pix.x.toFixed(1),
                     y: pix.y.toFixed(1),
-                    href: `#${type}`,
+                    href: `#${namespaced}`,
                 },
             });
         }
@@ -36,7 +41,8 @@ export class Region {
     svgCoordinates(
         svgEl: SVGElement,
         orientation: Orientation,
-        textAttributes: any
+        textAttributes: any,
+        coordinatesFormat: string
     ): void {
         const pix = orientation.pixels(
             new Point(this.x, this.y),
@@ -52,7 +58,15 @@ export class Region {
                 y: pix.y.toFixed(1),
             },
         });
-        coordEl.textContent = `${this.x}.${this.y}`;
+
+        const xStr = this.x.toString().padStart(2, "0");
+        const yStr = this.y.toString().padStart(2, "0");
+
+        const content = coordinatesFormat
+            .replace("{X}", xStr)
+            .replace("{Y}", yStr);
+
+        coordEl.textContent = content;
     }
 
     svgRegion(
@@ -60,12 +74,6 @@ export class Region {
         orientation: Orientation,
         attributes: any
     ): void {
-        let id = "hex";
-        if (this.x < 100 && this.y < 100) {
-            id += `${this.x}${this.y}`;
-        } else {
-            id += `${this.x}.${this.y}`;
-        }
         const points = orientation
             .hexCorners()
             .map((corner: Point) => {
@@ -78,7 +86,7 @@ export class Region {
         svgEl.createSvg("polygon", {
             attr: {
                 ...attributes,
-                id,
+                id: this.namespace(this.id),
                 points,
             },
         });
@@ -97,8 +105,11 @@ export class Region {
             ...labelAttributes,
         };
 
-        //Computing the label and link
-        const textContent = this.computeLinkAndLabel(this.label).length > 1 ? this.computeLinkAndLabel(this.label)[1] : this.computeLinkAndLabel(this.label)[0];
+        // Computing the label and link
+        const textContent =
+            this.computeLinkAndLabel(this.label).length > 1
+                ? this.computeLinkAndLabel(this.label)[1]
+                : this.computeLinkAndLabel(this.label)[0];
         const linkContent = this.computeLinkAndLabel(this.label)[0];
 
         if (this.size !== undefined) {
@@ -127,13 +138,13 @@ export class Region {
             //Add in clickable link for Obsidian
             const labelLinkEl = gEl.createSvg("a", {
                 attr: {
-                    'data-tooltip-position': 'top',
-                    'aria-label': linkContent,
-                    'href': linkContent,
-                    'data-href': linkContent,
-                    class: 'internal-link',
-                    target: '_blank',
-                    rel: 'noopener'
+                    "data-tooltip-position": "top",
+                    "aria-label": linkContent,
+                    href: linkContent,
+                    "data-href": linkContent,
+                    class: "internal-link",
+                    target: "_blank",
+                    rel: "noopener",
                 },
             });
 
@@ -143,7 +154,6 @@ export class Region {
                     x: pix.x.toFixed(1),
                     y: pix.y.toFixed(1),
                     ...attributes,
-
                 },
             });
 
@@ -165,8 +175,8 @@ export class Region {
     computeLinkAndLabel(label: string): [string, string] {
         let link = label;
         let display = label;
-        if (label.includes('|')) {
-            const parts = label.split('|');
+        if (label.includes("|")) {
+            const parts = label.split("|");
             link = parts[0];
             display = parts[1];
         }

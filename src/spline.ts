@@ -8,7 +8,7 @@ export class Spline {
     start: string;
     id: string;
     points: Point[];
-    orientation: any;
+    orientation: Orientation;
 
     constructor() {
         this.points = [];
@@ -51,34 +51,87 @@ export class Spline {
         //  0104    0304
         //
         //  Note that the arithmetic changes when x is odd.
+        // If this.orientation.swapEvenOdd === true, then this is the example map:
+        //
+        // Example Map             Index for the array
+        //
+        //      0201                      2
+        //  0101    0301               1     3
+        //      0202    0402
+        //  0102    0302               6     4
+        //      0203    0403              5
+        //  0103    0303
+        //
+        // We need to use a different algorithm with horizontal hexes
+        // Example map:          Index for the array
+        //     0301  0401           1   2
+        //  0202  0302  0402      6       3
+        //     0303  0403  0503     5   4
+        //  0204  0304  0404
+        //
+        // If this.orientation.swapEvenOdd === true, then this is the example map:
+        //
+        // Example Map             Index for the array
+        //     0201  0301           1   2
+        //  0202  0302  0402      6       3
+        //     0203  0303  0403     5   4
+        //  0204  0304  0404
+        let delta;
+        const evenOdd = this.orientation.swapEvenOdd ? 1 : 0;
 
-        const delta = [
-            [
-                new Point(-1, 0),
-                new Point(0, -1),
-                new Point(+1, 0),
-                new Point(+1, +1),
-                new Point(0, +1),
-                new Point(-1, +1),
-            ], // x is even
-            [
-                new Point(-1, -1),
-                new Point(0, -1),
-                new Point(+1, -1),
-                new Point(+1, 0),
-                new Point(0, +1),
-                new Point(-1, 0),
-            ], // x is odd
-        ];
+        if (this.orientation.flatTop) {
+            delta = [
+                [
+                    new Point(-1, 0 - evenOdd), // -1 -1
+                    new Point(0, -1), // 0 -1
+                    new Point(+1, 0 - evenOdd), // +1 -1
+                    new Point(+1, +1 - evenOdd), // +1 +0
+                    new Point(0, +1), // 0 +1
+                    new Point(-1, +1 - evenOdd), // -1, 0
+                ], // x is even
+                [
+                    new Point(-1, -1 + evenOdd),
+                    new Point(0, -1),
+                    new Point(+1, -1 + evenOdd),
+                    new Point(+1, 0 + evenOdd),
+                    new Point(0, +1),
+                    new Point(-1, 0 + evenOdd),
+                ], // x is odd
+            ];
+        } else {
+            delta = [
+                [
+                    new Point(0 - evenOdd, -1),
+                    new Point(1 - evenOdd, -1),
+                    new Point(+1, 0),
+                    new Point(+1 - evenOdd, +1),
+                    new Point(0 - evenOdd, +1),
+                    new Point(-1, 0),
+                ], // Y is even
+                [
+                    new Point(-1 + evenOdd, -1),
+                    new Point(0 + evenOdd, -1),
+                    new Point(+1, 0),
+                    new Point(0 + evenOdd, +1),
+                    new Point(-1 + evenOdd, +1),
+                    new Point(-1, 0),
+                ], // Y is odd
+            ];
+        }
 
         let min, best;
 
         for (let i = 0; i < 6; i++) {
             // make a new guess
-            let offset = Math.abs(from.x % 2);
-            let x = from.x + delta[offset][i].x;
-            let y = from.y + delta[offset][i].y;
+            let offset;
+            if (this.orientation.flatTop) {
+                offset = Math.abs(from.x % 2);
+            } else {
+                offset = Math.abs(from.y % 2);
+            }
 
+            const x = from.x + delta[offset][i].x;
+            const y = from.y + delta[offset][i].y;
             let d = (to.x - x) * (to.x - x) + (to.y - y) * (to.y - y);
             if (min === undefined || d < min) {
                 min = d;
