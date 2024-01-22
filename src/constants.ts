@@ -6,6 +6,7 @@ export const TEXT_REGEX = /^text\s+(.*)/;
 export const GLOW_REGEX = /^glow\s+(.*)/;
 export const LABEL_REGEX = /^label\s+(.*)/;
 export const OPTION_REGEX = /^option\s+(.*)/;
+export const OTHER_REGEX = /^other\s+(.*)/;
 export const HEX_REGEX = /^(-?\d\d)(-?\d\d)(\d\d)?\s+(.*)/;
 export const HEX_LABEL_REGEX = /["]([^"]+)["]\s*(\d+)?/;
 export const SPLINE_REGEX =
@@ -21,6 +22,7 @@ export interface SVGElement {
     createSvg(tag: string, options?: any): SVGElement;
     innerHTML: string;
     textContent: string;
+    insertAdjacentHTML(position: "beforebegin" | "afterbegin" | "beforeend" | "afterend", text: string) : void;
 }
 
 export type NamespaceFunction = {
