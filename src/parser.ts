@@ -9,6 +9,7 @@ import {
     LABEL_REGEX,
     HEX_REGEX,
     HEX_LABEL_REGEX,
+    OTHER_REGEX,
     SPLINE_REGEX,
     SPLINE_ELEMENT_SPLIT_REGEX,
     SPLINE_POINT_REGEX,
@@ -32,6 +33,7 @@ export class TextMapperParser {
     defs: string[]; // ' => sub { [] };
     path: any; // ' => sub { {} };
     splines: Spline[]; // ' => sub { [] };
+    others: string[]; // ' => sub { {} };
     pathAttributes: any; // ' => sub { {} };
     textAttributes: any;
     glowAttributes: any;
@@ -56,6 +58,7 @@ export class TextMapperParser {
         this.textAttributes = "";
         this.glowAttributes = "";
         this.labelAttributes = "";
+        this.others = [];
     }
 
     /**
@@ -133,6 +136,9 @@ export class TextMapperParser {
             } else if (LABEL_REGEX.test(line)) {
                 const match = line.match(LABEL_REGEX);
                 this.labelAttributes = this.parseAttributes(match[1]);
+            } else if (OTHER_REGEX.test(line)) {
+                const match = line.match(OTHER_REGEX)[0];
+                this.others.push(match);
             }
         }
     }
@@ -446,6 +452,15 @@ export class TextMapperParser {
         }
     }
 
+    svgOthers(svgEl: SVGElement): void {
+        const othersEl = svgEl.createSvg("g", {
+            attr: { id: this.namespace("others") },
+        });
+        for (const other of this.others) {
+            othersEl.insertAdjacentHTML("beforeend", other);
+        }
+    }
+
     svg(el: HTMLElement) {
         const svgEl = this.svgHeader(el);
         this.svgDefs(svgEl);
@@ -456,6 +471,7 @@ export class TextMapperParser {
         this.svgRegions(svgEl);
         this.svgPathLabels(svgEl);
         this.svgLabels(svgEl);
+        this.svgOthers(svgEl);
         return svgEl;
     }
 }
